@@ -195,7 +195,7 @@ local configFrame
 function MBT.InitConfig()
   configFrame = CreateFrame("Frame", "MyBuffTrackerConfig", UIParent)
   configFrame:SetWidth(400)
-  configFrame:SetHeight(420)
+  configFrame:SetHeight(520)
   configFrame:SetPoint("CENTER")
   configFrame:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -240,6 +240,8 @@ function MBT.InitConfig()
 
   matchNameText = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   matchNameText:SetPoint("LEFT", matchIcon, "RIGHT", 4, 0)
+  matchNameText:SetWidth(140)
+  matchNameText:SetJustifyH("LEFT")
   matchNameText:Hide()
 
   confirmButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
@@ -268,7 +270,7 @@ function MBT.InitConfig()
   advancedToggle = CreateFrame("CheckButton", nil, configFrame, "UICheckButtonTemplate")
   advancedToggle:SetWidth(20)
   advancedToggle:SetHeight(20)
-  advancedToggle:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -84)
+  advancedToggle:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -108)
 
   local advancedLabel = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   advancedLabel:SetPoint("LEFT", advancedToggle, "RIGHT", 2, 0)
@@ -305,13 +307,13 @@ function MBT.InitConfig()
   local listContainer = CreateFrame("Frame", nil, configFrame)
   listContainer:SetWidth(360)
   listContainer:SetHeight(MAX_VISIBLE_ROWS * (ROW_HEIGHT + 2))
-  listContainer:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -116)
+  listContainer:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -140)
   MBT.CreateConfigRows(listContainer)
 
   local sortModeButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
   sortModeButton:SetWidth(160)
   sortModeButton:SetHeight(22)
-  sortModeButton:SetPoint("BOTTOMLEFT", configFrame, "BOTTOMLEFT", 24, 16)
+  sortModeButton:SetPoint("TOPLEFT", listContainer, "BOTTOMLEFT", 0, -12)
   local function RefreshSortModeButton()
     sortModeButton:SetText("Sort: " .. MBT.db.sortMode)
   end
