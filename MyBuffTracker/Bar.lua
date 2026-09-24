@@ -15,14 +15,17 @@ local ICON_SIZE = BAR_HEIGHT
 
 function MBT.CreateBar(parent, index)
   local bar = CreateFrame("Frame", "MyBuffTrackerBar" .. index, parent)
-  bar:SetSize(BAR_WIDTH, BAR_HEIGHT)
+  bar:SetWidth(BAR_WIDTH)
+  bar:SetHeight(BAR_HEIGHT)
 
   bar.icon = bar:CreateTexture(nil, "ARTWORK")
-  bar.icon:SetSize(ICON_SIZE, ICON_SIZE)
+  bar.icon:SetWidth(ICON_SIZE)
+  bar.icon:SetHeight(ICON_SIZE)
   bar.icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
 
   bar.bar = CreateFrame("StatusBar", nil, bar)
-  bar.bar:SetSize(BAR_WIDTH - ICON_SIZE - 2, BAR_HEIGHT)
+  bar.bar:SetWidth(BAR_WIDTH - ICON_SIZE - 2)
+  bar.bar:SetHeight(BAR_HEIGHT)
   bar.bar:SetPoint("LEFT", bar.icon, "RIGHT", 2, 0)
   bar.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
   bar.bar:SetMinMaxValues(0, 1)
