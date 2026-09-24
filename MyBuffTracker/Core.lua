@@ -81,3 +81,28 @@ function MBT.SetAnchorPosition(db, point, x, y)
   db.anchor.x = x
   db.anchor.y = y
 end
+
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("ADDON_LOADED")
+eventFrame:SetScript("OnEvent", function(self, event, addonName)
+  if event == "ADDON_LOADED" and addonName == "MyBuffTracker" then
+    MyBuffTrackerDB = MBT.ApplyDefaults(MyBuffTrackerDB)
+    MBT.db = MyBuffTrackerDB
+
+    if MBT.InitTracker then
+      MBT.InitTracker()
+    end
+    if MBT.InitConfig then
+      MBT.InitConfig()
+    end
+
+    self:UnregisterEvent("ADDON_LOADED")
+  end
+end)
+
+SLASH_MYBUFFTRACKER1 = "/bt"
+SlashCmdList["MYBUFFTRACKER"] = function()
+  if MBT.ToggleConfig then
+    MBT.ToggleConfig()
+  end
+end
