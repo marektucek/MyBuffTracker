@@ -4,12 +4,18 @@ local MBT = MyBuffTracker
 function MBT.ApplyDefaults(db)
   db = db or {}
   db.anchor = db.anchor or { point = "CENTER", x = 0, y = 0 }
+  db.anchor.relativePoint = db.anchor.relativePoint or db.anchor.point
   db.sortMode = db.sortMode or "fixed"
   db.trackedBuffs = db.trackedBuffs or {}
   return db
 end
 
 function MBT.AddTrackedBuff(db, spellId, displayName, icon)
+  for _, buff in ipairs(db.trackedBuffs) do
+    if buff.spellId == spellId then
+      return buff
+    end
+  end
   local order = #db.trackedBuffs + 1
   table.insert(db.trackedBuffs, {
     spellId = spellId,
@@ -76,8 +82,9 @@ function MBT.SetSortMode(db, sortMode)
   db.sortMode = sortMode
 end
 
-function MBT.SetAnchorPosition(db, point, x, y)
+function MBT.SetAnchorPosition(db, point, relativePoint, x, y)
   db.anchor.point = point
+  db.anchor.relativePoint = relativePoint
   db.anchor.x = x
   db.anchor.y = y
 end
@@ -101,6 +108,7 @@ eventFrame:SetScript("OnEvent", function(self, event, addonName)
 end)
 
 SLASH_MYBUFFTRACKER1 = "/bt"
+SLASH_MYBUFFTRACKER2 = "/mbt"
 SlashCmdList["MYBUFFTRACKER"] = function()
   if MBT.ToggleConfig then
     MBT.ToggleConfig()

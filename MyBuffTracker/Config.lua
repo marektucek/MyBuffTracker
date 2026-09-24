@@ -65,9 +65,13 @@ local function HandleAddById()
   local spellId = tonumber(idText)
   if not spellId then return end
   local name, _, icon = GetSpellInfo(spellId)
-  local displayName = name or ("Spell " .. spellId)
-  MBT.AddTrackedBuff(MBT.db, spellId, displayName, icon)
+  if not name then
+    notFoundText:Show()
+    return
+  end
+  MBT.AddTrackedBuff(MBT.db, spellId, name, icon)
   spellIdEditBox:SetText("")
+  notFoundText:Hide()
   if MBT.RefreshConfigRows then MBT.RefreshConfigRows() end
   MBT.RefreshDisplay()
 end
@@ -209,6 +213,8 @@ function MBT.InitConfig()
   configFrame:SetScript("OnDragStart", configFrame.StartMoving)
   configFrame:SetScript("OnDragStop", configFrame.StopMovingOrSizing)
   configFrame:Hide()
+  configFrame:SetClampedToScreen(true)
+  tinsert(UISpecialFrames, "MyBuffTrackerConfig")
 
   local title = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOP", configFrame, "TOP", 0, -16)

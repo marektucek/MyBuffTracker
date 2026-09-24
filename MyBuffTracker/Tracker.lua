@@ -53,7 +53,9 @@ function MBT.ComputeDisplayList(trackedBuffs, activeBySpellId, sortMode)
         return a.isActive
       end
       if a.isActive then
-        return a.expirationTime < b.expirationTime
+        local aExp = (a.expirationTime and a.expirationTime > 0) and a.expirationTime or math.huge
+        local bExp = (b.expirationTime and b.expirationTime > 0) and b.expirationTime or math.huge
+        return aExp < bExp
       end
       return a.order < b.order
     end)
@@ -106,22 +108,39 @@ end
 function MBT.SetAnchorLocked(locked)
   if not anchor then return end
   anchor:EnableMouse(not locked)
+  if anchor.handle then
+    if locked then anchor.handle:Hide() else anchor.handle:Show() end
+  end
+  if anchor.handleText then
+    if locked then anchor.handleText:Hide() else anchor.handleText:Show() end
+  end
 end
 
 function MBT.InitTracker()
   anchor = CreateFrame("Frame", "MyBuffTrackerAnchor", UIParent)
   anchor:SetWidth(160)
-  anchor:SetHeight(1)
-  anchor:SetPoint(MBT.db.anchor.point, UIParent, MBT.db.anchor.point, MBT.db.anchor.x, MBT.db.anchor.y)
+  anchor:SetHeight(20)
+  anchor:SetPoint(MBT.db.anchor.point, UIParent, MBT.db.anchor.relativePoint, MBT.db.anchor.x, MBT.db.anchor.y)
   anchor:SetMovable(true)
   anchor:EnableMouse(false)
   anchor:RegisterForDrag("LeftButton")
   anchor:SetScript("OnDragStart", function(self) self:StartMoving() end)
   anchor:SetScript("OnDragStop", function(self)
     self:StopMovingOrSizing()
-    local point, _, _, x, y = self:GetPoint()
-    MBT.SetAnchorPosition(MBT.db, point, x, y)
+    local point, _, relativePoint, x, y = self:GetPoint()
+    MBT.SetAnchorPosition(MBT.db, point, relativePoint, x, y)
   end)
+
+  anchor.handle = anchor:CreateTexture(nil, "BACKGROUND")
+  anchor.handle:SetAllPoints(anchor)
+  anchor.handle:SetTexture(0, 0.6, 1, 0.35)
+  anchor.handle:Hide()
+
+  anchor.handleText = anchor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  anchor.handleText:SetAllPoints(anchor)
+  anchor.handleText:SetText("MyBuffTracker (drag)")
+  anchor.handleText:Hide()
+
   MBT.anchor = anchor
 
   local eventFrame = CreateFrame("Frame")

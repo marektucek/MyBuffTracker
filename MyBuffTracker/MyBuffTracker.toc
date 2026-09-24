@@ -3,7 +3,7 @@
 ## Notes: Lightweight self-buff icon+bar tracker with a simple config panel.
 ## Author: Marek Tucek
 ## Version: 1.0
-## SavedVariables: MyBuffTrackerDB
+## SavedVariablesPerCharacter: MyBuffTrackerDB
 
 Core.lua
 Bar.lua

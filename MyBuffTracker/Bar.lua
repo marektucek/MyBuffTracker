@@ -48,11 +48,12 @@ function MBT.UpdateBar(bar, data, now)
   bar:Show()
   bar.icon:SetTexture(data.icon)
 
-  local color = data.barColor or DEFAULT_BAR_COLOR
-  bar.bar:SetStatusBarColor(color.r, color.g, color.b)
-
   if data.isActive then
+    bar:SetAlpha(1)
     bar.icon:SetDesaturated(false)
+    local color = data.barColor or DEFAULT_BAR_COLOR
+    bar.bar:SetStatusBarColor(color.r, color.g, color.b)
+
     local remaining = math.max(data.expirationTime - now, 0)
     local fraction = 1
     if data.duration and data.duration > 0 then
@@ -64,10 +65,14 @@ function MBT.UpdateBar(bar, data, now)
     if data.count and data.count > 1 then
       text = text .. " x" .. data.count
     end
-    text = text .. "  " .. MBT.FormatTime(remaining)
+    if data.duration and data.duration > 0 then
+      text = text .. "  " .. MBT.FormatTime(remaining)
+    end
     bar.label:SetText(text)
   else
+    bar:SetAlpha(0.5)
     bar.icon:SetDesaturated(true)
+    bar.bar:SetStatusBarColor(0.4, 0.4, 0.4)
     bar.bar:SetValue(1)
     bar.label:SetText(data.displayName)
   end
