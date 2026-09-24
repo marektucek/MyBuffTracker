@@ -189,3 +189,164 @@ function MBT.CreateConfigRows(parent)
     rows[i] = CreateRow(parent, i)
   end
 end
+
+local configFrame
+
+function MBT.InitConfig()
+  configFrame = CreateFrame("Frame", "MyBuffTrackerConfig", UIParent)
+  configFrame:SetWidth(400)
+  configFrame:SetHeight(420)
+  configFrame:SetPoint("CENTER")
+  configFrame:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    tile = true, tileSize = 32, edgeSize = 32,
+    insets = { left = 11, right = 12, top = 12, bottom = 11 },
+  })
+  configFrame:SetMovable(true)
+  configFrame:EnableMouse(true)
+  configFrame:RegisterForDrag("LeftButton")
+  configFrame:SetScript("OnDragStart", configFrame.StartMoving)
+  configFrame:SetScript("OnDragStop", configFrame.StopMovingOrSizing)
+  configFrame:Hide()
+
+  local title = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  title:SetPoint("TOP", configFrame, "TOP", 0, -16)
+  title:SetText("MyBuffTracker")
+
+  local closeButton = CreateFrame("Button", nil, configFrame, "UIPanelCloseButton")
+  closeButton:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", -4, -4)
+  closeButton:SetScript("OnClick", function() configFrame:Hide() end)
+
+  addEditBox = CreateFrame("EditBox", nil, configFrame, "InputBoxTemplate")
+  addEditBox:SetWidth(180)
+  addEditBox:SetHeight(20)
+  addEditBox:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -48)
+  addEditBox:SetAutoFocus(false)
+  addEditBox:SetScript("OnEnterPressed", HandleAddByName)
+
+  addButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  addButton:SetWidth(60)
+  addButton:SetHeight(22)
+  addButton:SetText("Add")
+  addButton:SetPoint("LEFT", addEditBox, "RIGHT", 8, 0)
+  addButton:SetScript("OnClick", HandleAddByName)
+
+  matchIcon = configFrame:CreateTexture(nil, "ARTWORK")
+  matchIcon:SetWidth(20)
+  matchIcon:SetHeight(20)
+  matchIcon:SetPoint("TOPLEFT", addEditBox, "BOTTOMLEFT", 0, -8)
+  matchIcon:Hide()
+
+  matchNameText = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  matchNameText:SetPoint("LEFT", matchIcon, "RIGHT", 4, 0)
+  matchNameText:Hide()
+
+  confirmButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  confirmButton:SetWidth(70)
+  confirmButton:SetHeight(20)
+  confirmButton:SetText("Confirm")
+  confirmButton:SetPoint("LEFT", matchNameText, "RIGHT", 8, 0)
+  confirmButton:SetScript("OnClick", HandleConfirm)
+  confirmButton:Hide()
+
+  cancelButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  cancelButton:SetWidth(60)
+  cancelButton:SetHeight(20)
+  cancelButton:SetText("Cancel")
+  cancelButton:SetPoint("LEFT", confirmButton, "RIGHT", 4, 0)
+  cancelButton:SetScript("OnClick", ClearPendingMatch)
+  cancelButton:Hide()
+
+  notFoundText = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  notFoundText:SetPoint("TOPLEFT", addEditBox, "BOTTOMLEFT", 0, -8)
+  notFoundText:SetWidth(340)
+  notFoundText:SetJustifyH("LEFT")
+  notFoundText:SetText("No active buff matches that name. Use Advanced to enter a spell ID.")
+  notFoundText:Hide()
+
+  advancedToggle = CreateFrame("CheckButton", nil, configFrame, "UICheckButtonTemplate")
+  advancedToggle:SetWidth(20)
+  advancedToggle:SetHeight(20)
+  advancedToggle:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -84)
+
+  local advancedLabel = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  advancedLabel:SetPoint("LEFT", advancedToggle, "RIGHT", 2, 0)
+  advancedLabel:SetText("Advanced: add by spell ID")
+
+  spellIdEditBox = CreateFrame("EditBox", nil, configFrame, "InputBoxTemplate")
+  spellIdEditBox:SetWidth(100)
+  spellIdEditBox:SetHeight(20)
+  spellIdEditBox:SetPoint("LEFT", advancedLabel, "RIGHT", 12, 0)
+  spellIdEditBox:SetAutoFocus(false)
+  spellIdEditBox:SetNumeric(true)
+  spellIdEditBox:SetScript("OnEnterPressed", HandleAddById)
+  spellIdEditBox:Hide()
+
+  addByIdButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  addByIdButton:SetWidth(60)
+  addByIdButton:SetHeight(20)
+  addByIdButton:SetText("Add")
+  addByIdButton:SetPoint("LEFT", spellIdEditBox, "RIGHT", 6, 0)
+  addByIdButton:SetScript("OnClick", HandleAddById)
+  addByIdButton:Hide()
+
+  advancedToggle:SetScript("OnClick", function(self)
+    advancedMode = self:GetChecked()
+    if advancedMode then
+      spellIdEditBox:Show()
+      addByIdButton:Show()
+    else
+      spellIdEditBox:Hide()
+      addByIdButton:Hide()
+    end
+  end)
+
+  local listContainer = CreateFrame("Frame", nil, configFrame)
+  listContainer:SetWidth(360)
+  listContainer:SetHeight(MAX_VISIBLE_ROWS * (ROW_HEIGHT + 2))
+  listContainer:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -116)
+  MBT.CreateConfigRows(listContainer)
+
+  local sortModeButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  sortModeButton:SetWidth(160)
+  sortModeButton:SetHeight(22)
+  sortModeButton:SetPoint("BOTTOMLEFT", configFrame, "BOTTOMLEFT", 24, 16)
+  local function RefreshSortModeButton()
+    sortModeButton:SetText("Sort: " .. MBT.db.sortMode)
+  end
+  sortModeButton:SetScript("OnClick", function()
+    local newMode = (MBT.db.sortMode == "fixed") and "expiration" or "fixed"
+    MBT.SetSortMode(MBT.db, newMode)
+    RefreshSortModeButton()
+    MBT.RefreshDisplay()
+  end)
+
+  local anchorLocked = true
+  local lockButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
+  lockButton:SetWidth(160)
+  lockButton:SetHeight(22)
+  lockButton:SetPoint("LEFT", sortModeButton, "RIGHT", 8, 0)
+  local function RefreshLockButton()
+    lockButton:SetText(anchorLocked and "Unlock Anchor" or "Lock Anchor")
+  end
+  lockButton:SetScript("OnClick", function()
+    anchorLocked = not anchorLocked
+    MBT.SetAnchorLocked(anchorLocked)
+    RefreshLockButton()
+  end)
+
+  RefreshSortModeButton()
+  RefreshLockButton()
+  MBT.RefreshConfigRows()
+end
+
+function MBT.ToggleConfig()
+  if not configFrame then return end
+  if configFrame:IsShown() then
+    configFrame:Hide()
+  else
+    MBT.RefreshConfigRows()
+    configFrame:Show()
+  end
+end
