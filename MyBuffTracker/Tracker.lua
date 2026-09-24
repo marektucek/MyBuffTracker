@@ -65,3 +65,81 @@ function MBT.ComputeDisplayList(trackedBuffs, activeBySpellId, sortMode)
 
   return list
 end
+
+local UPDATE_INTERVAL = 0.1
+
+local anchor
+local bars = {}
+local elapsedSinceUpdate = 0
+
+local function EnsureBar(index)
+  if not bars[index] then
+    bars[index] = MBT.CreateBar(anchor, index)
+  end
+  return bars[index]
+end
+
+local function LayoutBars(displayList)
+  for i, data in ipairs(displayList) do
+    local bar = EnsureBar(i)
+    bar:ClearAllPoints()
+    if i == 1 then
+      bar:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
+    else
+      bar:SetPoint("TOPLEFT", bars[i - 1], "BOTTOMLEFT", 0, -2)
+    end
+    MBT.UpdateBar(bar, data, GetTime())
+  end
+
+  for i = #displayList + 1, #bars do
+    bars[i]:Hide()
+  end
+end
+
+function MBT.RefreshDisplay()
+  if not MBT.db then return end
+  local activeBySpellId = MBT.MatchActiveAuras(MBT.db.trackedBuffs, UnitBuff)
+  local displayList = MBT.ComputeDisplayList(MBT.db.trackedBuffs, activeBySpellId, MBT.db.sortMode)
+  LayoutBars(displayList)
+end
+
+function MBT.SetAnchorLocked(locked)
+  if not anchor then return end
+  anchor:EnableMouse(not locked)
+end
+
+function MBT.InitTracker()
+  anchor = CreateFrame("Frame", "MyBuffTrackerAnchor", UIParent)
+  anchor:SetWidth(160)
+  anchor:SetHeight(1)
+  anchor:SetPoint(MBT.db.anchor.point, UIParent, MBT.db.anchor.point, MBT.db.anchor.x, MBT.db.anchor.y)
+  anchor:SetMovable(true)
+  anchor:EnableMouse(false)
+  anchor:RegisterForDrag("LeftButton")
+  anchor:SetScript("OnDragStart", function(self) self:StartMoving() end)
+  anchor:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, _, x, y = self:GetPoint()
+    MBT.SetAnchorPosition(MBT.db, point, x, y)
+  end)
+  MBT.anchor = anchor
+
+  local eventFrame = CreateFrame("Frame")
+  eventFrame:RegisterEvent("UNIT_AURA")
+  eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+  eventFrame:SetScript("OnEvent", function(self, event, unit)
+    if event == "UNIT_AURA" and unit ~= "player" then return end
+    MBT.RefreshDisplay()
+  end)
+
+  local ticker = CreateFrame("Frame")
+  ticker:SetScript("OnUpdate", function(self, elapsed)
+    elapsedSinceUpdate = elapsedSinceUpdate + elapsed
+    if elapsedSinceUpdate >= UPDATE_INTERVAL then
+      elapsedSinceUpdate = 0
+      MBT.RefreshDisplay()
+    end
+  end)
+
+  MBT.RefreshDisplay()
+end
