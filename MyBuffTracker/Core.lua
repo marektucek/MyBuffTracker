@@ -6,6 +6,7 @@ function MBT.ApplyDefaults(db)
   db.anchor = db.anchor or { point = "CENTER", x = 0, y = 0 }
   db.anchor.relativePoint = db.anchor.relativePoint or db.anchor.point
   db.sortMode = db.sortMode or "fixed"
+  db.iconScale = db.iconScale or 1
   db.trackedBuffs = db.trackedBuffs or {}
   return db
 end
@@ -80,6 +81,10 @@ end
 
 function MBT.SetSortMode(db, sortMode)
   db.sortMode = sortMode
+end
+
+function MBT.SetIconScale(db, scale)
+  db.iconScale = scale
 end
 
 function MBT.SetAnchorPosition(db, point, relativePoint, x, y)

@@ -84,11 +84,12 @@ end
 local function LayoutBars(displayList)
   for i, data in ipairs(displayList) do
     local bar = EnsureBar(i)
+    MBT.SetBarIconScale(bar, MBT.db.iconScale)
     bar:ClearAllPoints()
     if i == 1 then
-      bar:SetPoint("TOPLEFT", anchor, "TOPLEFT", 0, 0)
+      bar:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 0, 0)
     else
-      bar:SetPoint("TOPLEFT", bars[i - 1], "BOTTOMLEFT", 0, -2)
+      bar:SetPoint("BOTTOMLEFT", bars[i - 1], "TOPLEFT", 0, 2)
     end
     MBT.UpdateBar(bar, data, GetTime())
   end
@@ -107,13 +108,7 @@ end
 
 function MBT.SetAnchorLocked(locked)
   if not anchor then return end
-  anchor:EnableMouse(not locked)
-  if anchor.handle then
-    if locked then anchor.handle:Hide() else anchor.handle:Show() end
-  end
-  if anchor.handleText then
-    if locked then anchor.handleText:Hide() else anchor.handleText:Show() end
-  end
+  if locked then anchor.handle:Hide() else anchor.handle:Show() end
 end
 
 function MBT.InitTracker()
@@ -122,24 +117,33 @@ function MBT.InitTracker()
   anchor:SetHeight(20)
   anchor:SetPoint(MBT.db.anchor.point, UIParent, MBT.db.anchor.relativePoint, MBT.db.anchor.x, MBT.db.anchor.y)
   anchor:SetMovable(true)
-  anchor:EnableMouse(false)
-  anchor:RegisterForDrag("LeftButton")
-  anchor:SetScript("OnDragStart", function(self) self:StartMoving() end)
-  anchor:SetScript("OnDragStop", function(self)
-    self:StopMovingOrSizing()
-    local point, _, relativePoint, x, y = self:GetPoint()
+
+  -- Bars grow upward from the anchor, so the drag handle sits just below the
+  -- first bar where it never covers bar text.
+  local handle = CreateFrame("Frame", nil, anchor)
+  handle:SetWidth(160)
+  handle:SetHeight(16)
+  handle:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+  handle:SetFrameLevel(anchor:GetFrameLevel() + 10)
+  handle:EnableMouse(true)
+  handle:RegisterForDrag("LeftButton")
+  handle:SetScript("OnDragStart", function() anchor:StartMoving() end)
+  handle:SetScript("OnDragStop", function()
+    anchor:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = anchor:GetPoint()
     MBT.SetAnchorPosition(MBT.db, point, relativePoint, x, y)
   end)
 
-  anchor.handle = anchor:CreateTexture(nil, "BACKGROUND")
-  anchor.handle:SetAllPoints(anchor)
-  anchor.handle:SetTexture(0, 0.6, 1, 0.35)
-  anchor.handle:Hide()
+  local handleBg = handle:CreateTexture(nil, "BACKGROUND")
+  handleBg:SetAllPoints(handle)
+  handleBg:SetTexture(0, 0.6, 1, 0.6)
 
-  anchor.handleText = anchor:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  anchor.handleText:SetAllPoints(anchor)
-  anchor.handleText:SetText("MyBuffTracker (drag)")
-  anchor.handleText:Hide()
+  local handleText = handle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  handleText:SetAllPoints(handle)
+  handleText:SetText("MyBuffTracker (drag)")
+
+  handle:Hide()
+  anchor.handle = handle
 
   MBT.anchor = anchor
 

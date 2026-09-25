@@ -11,20 +11,16 @@ end
 local DEFAULT_BAR_COLOR = { r = 0.2, g = 0.6, b = 1.0 }
 local BAR_WIDTH = 160
 local BAR_HEIGHT = 20
-local ICON_SIZE = BAR_HEIGHT
+local STATUS_BAR_WIDTH = BAR_WIDTH - BAR_HEIGHT - 2
 
 function MBT.CreateBar(parent, index)
   local bar = CreateFrame("Frame", "MyBuffTrackerBar" .. index, parent)
-  bar:SetWidth(BAR_WIDTH)
-  bar:SetHeight(BAR_HEIGHT)
 
   bar.icon = bar:CreateTexture(nil, "ARTWORK")
-  bar.icon:SetWidth(ICON_SIZE)
-  bar.icon:SetHeight(ICON_SIZE)
   bar.icon:SetPoint("LEFT", bar, "LEFT", 0, 0)
 
   bar.bar = CreateFrame("StatusBar", nil, bar)
-  bar.bar:SetWidth(BAR_WIDTH - ICON_SIZE - 2)
+  bar.bar:SetWidth(STATUS_BAR_WIDTH)
   bar.bar:SetHeight(BAR_HEIGHT)
   bar.bar:SetPoint("LEFT", bar.icon, "RIGHT", 2, 0)
   bar.bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
@@ -40,7 +36,20 @@ function MBT.CreateBar(parent, index)
   bar.label:SetPoint("RIGHT", bar.bar, "RIGHT", -3, 0)
   bar.label:SetJustifyH("LEFT")
 
+  MBT.SetBarIconScale(bar, 1)
   return bar
+end
+
+-- The icon scales around the bar's vertical center; the bar frame grows to
+-- fit a large icon so stacked bars never overlap.
+function MBT.SetBarIconScale(bar, scale)
+  if bar.iconScale == scale then return end
+  bar.iconScale = scale
+  local iconSize = BAR_HEIGHT * scale
+  bar.icon:SetWidth(iconSize)
+  bar.icon:SetHeight(iconSize)
+  bar:SetWidth(iconSize + 2 + STATUS_BAR_WIDTH)
+  bar:SetHeight(math.max(iconSize, BAR_HEIGHT))
 end
 
 function MBT.UpdateBar(bar, data, now)

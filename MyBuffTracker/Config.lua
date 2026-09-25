@@ -89,7 +89,7 @@ function MBT.RefreshConfigRows()
       row.spellId = buff.spellId
       row.icon:SetTexture(buff.icon)
       row.nameText:SetText(buff.displayName)
-      row.dimCheck:SetChecked(buff.missingBehavior == "dim")
+      row.activeOnlyCheck:SetChecked(buff.missingBehavior ~= "dim")
       if buff.barColor then
         row.colorSwatchTexture:SetVertexColor(buff.barColor.r, buff.barColor.g, buff.barColor.b)
       else
@@ -118,19 +118,27 @@ local function CreateRow(parent, index)
   row.nameText:SetWidth(120)
   row.nameText:SetJustifyH("LEFT")
 
-  row.dimCheck = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
-  row.dimCheck:SetWidth(20)
-  row.dimCheck:SetHeight(20)
-  row.dimCheck:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
-  row.dimCheck:SetScript("OnClick", function(self)
-    MBT.SetMissingBehavior(MBT.db, row.spellId, self:GetChecked() and "dim" or "hide")
+  row.activeOnlyCheck = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
+  row.activeOnlyCheck:SetWidth(20)
+  row.activeOnlyCheck:SetHeight(20)
+  row.activeOnlyCheck:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
+  row.activeOnlyCheck:SetScript("OnClick", function(self)
+    MBT.SetMissingBehavior(MBT.db, row.spellId, self:GetChecked() and "hide" or "dim")
     MBT.RefreshDisplay()
   end)
+  row.activeOnlyCheck:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Show only while active")
+    GameTooltip:AddLine("Checked: the bar is hidden when the buff is missing.", 1, 1, 1, true)
+    GameTooltip:AddLine("Unchecked: the bar stays visible, grayed out.", 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  row.activeOnlyCheck:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   row.colorSwatch = CreateFrame("Button", nil, row)
   row.colorSwatch:SetWidth(16)
   row.colorSwatch:SetHeight(16)
-  row.colorSwatch:SetPoint("LEFT", row.dimCheck, "RIGHT", 6, 0)
+  row.colorSwatch:SetPoint("LEFT", row.activeOnlyCheck, "RIGHT", 24, 0)
   row.colorSwatch:SetNormalTexture("Interface\\ChatFrame\\ChatFrameColorSwatch")
   row.colorSwatchTexture = row.colorSwatch:GetNormalTexture()
   row.colorSwatch:SetScript("OnClick", function()
@@ -199,7 +207,7 @@ local configFrame
 function MBT.InitConfig()
   configFrame = CreateFrame("Frame", "MyBuffTrackerConfig", UIParent)
   configFrame:SetWidth(400)
-  configFrame:SetHeight(520)
+  configFrame:SetHeight(620)
   configFrame:SetPoint("CENTER")
   configFrame:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -224,7 +232,7 @@ function MBT.InitConfig()
   closeButton:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", -4, -4)
   closeButton:SetScript("OnClick", function() configFrame:Hide() end)
 
-  addEditBox = CreateFrame("EditBox", nil, configFrame, "InputBoxTemplate")
+  addEditBox = CreateFrame("EditBox", "MyBuffTrackerAddEditBox", configFrame, "InputBoxTemplate")
   addEditBox:SetWidth(180)
   addEditBox:SetHeight(20)
   addEditBox:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -48)
@@ -282,10 +290,10 @@ function MBT.InitConfig()
   advancedLabel:SetPoint("LEFT", advancedToggle, "RIGHT", 2, 0)
   advancedLabel:SetText("Advanced: add by spell ID")
 
-  spellIdEditBox = CreateFrame("EditBox", nil, configFrame, "InputBoxTemplate")
+  spellIdEditBox = CreateFrame("EditBox", "MyBuffTrackerSpellIdEditBox", configFrame, "InputBoxTemplate")
   spellIdEditBox:SetWidth(100)
   spellIdEditBox:SetHeight(20)
-  spellIdEditBox:SetPoint("LEFT", advancedLabel, "RIGHT", 12, 0)
+  spellIdEditBox:SetPoint("TOPLEFT", advancedToggle, "BOTTOMLEFT", 8, -4)
   spellIdEditBox:SetAutoFocus(false)
   spellIdEditBox:SetNumeric(true)
   spellIdEditBox:SetScript("OnEnterPressed", HandleAddById)
@@ -313,28 +321,59 @@ function MBT.InitConfig()
   local listContainer = CreateFrame("Frame", nil, configFrame)
   listContainer:SetWidth(360)
   listContainer:SetHeight(MAX_VISIBLE_ROWS * (ROW_HEIGHT + 2))
-  listContainer:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -140)
+  listContainer:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 24, -180)
   MBT.CreateConfigRows(listContainer)
 
-  local sortModeButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
-  sortModeButton:SetWidth(160)
-  sortModeButton:SetHeight(22)
-  sortModeButton:SetPoint("TOPLEFT", listContainer, "BOTTOMLEFT", 0, -12)
-  local function RefreshSortModeButton()
-    sortModeButton:SetText("Sort: " .. MBT.db.sortMode)
+  -- Column headers, centered over the row controls they describe.
+  local function CreateHeader(text, x)
+    local header = configFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    header:SetPoint("BOTTOM", listContainer, "TOPLEFT", x, 2)
+    header:SetText(text)
+    return header
   end
-  sortModeButton:SetScript("OnClick", function()
-    local newMode = (MBT.db.sortMode == "fixed") and "expiration" or "fixed"
-    MBT.SetSortMode(MBT.db, newMode)
-    RefreshSortModeButton()
-    MBT.RefreshDisplay()
-  end)
+  local buffHeader = configFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  buffHeader:SetPoint("BOTTOMLEFT", listContainer, "TOPLEFT", 0, 2)
+  buffHeader:SetText("Tracked buffs")
+  CreateHeader("Active only", 158)
+  CreateHeader("Color", 200)
+
+  local sortLabel = configFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  sortLabel:SetPoint("TOPLEFT", listContainer, "BOTTOMLEFT", 0, -12)
+  sortLabel:SetText("Bar order:")
+
+  local sortOptions = {
+    { mode = "fixed", text = "List order" },
+    { mode = "expiration", text = "Expiring soonest first" },
+  }
+  local sortRadios = {}
+  local function RefreshSortRadios()
+    for _, radio in ipairs(sortRadios) do
+      radio:SetChecked(MBT.db.sortMode == radio.mode)
+    end
+  end
+  local previous = sortLabel
+  for i, option in ipairs(sortOptions) do
+    local radio = CreateFrame("CheckButton", nil, configFrame, "UIRadioButtonTemplate")
+    radio.mode = option.mode
+    radio:SetPoint("LEFT", previous, "RIGHT", i == 1 and 8 or 12, 0)
+    local label = radio:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    label:SetPoint("LEFT", radio, "RIGHT", 2, 0)
+    label:SetText(option.text)
+    radio:SetHitRectInsets(0, -label:GetStringWidth() - 2, 0, 0)
+    radio:SetScript("OnClick", function(self)
+      MBT.SetSortMode(MBT.db, self.mode)
+      RefreshSortRadios()
+      MBT.RefreshDisplay()
+    end)
+    sortRadios[i] = radio
+    previous = label
+  end
 
   local anchorLocked = true
   local lockButton = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate")
   lockButton:SetWidth(160)
   lockButton:SetHeight(22)
-  lockButton:SetPoint("LEFT", sortModeButton, "RIGHT", 8, 0)
+  lockButton:SetPoint("TOPLEFT", sortLabel, "BOTTOMLEFT", 0, -12)
   local function RefreshLockButton()
     lockButton:SetText(anchorLocked and "Unlock Anchor" or "Lock Anchor")
   end
@@ -344,7 +383,28 @@ function MBT.InitConfig()
     RefreshLockButton()
   end)
 
-  RefreshSortModeButton()
+  local iconSlider = CreateFrame("Slider", "MyBuffTrackerIconScaleSlider", configFrame, "OptionsSliderTemplate")
+  iconSlider:SetWidth(200)
+  iconSlider:SetHeight(17)
+  iconSlider:SetPoint("TOPLEFT", lockButton, "BOTTOMLEFT", 4, -26)
+  iconSlider:SetMinMaxValues(0.5, 2)
+  iconSlider:SetValueStep(0.1)
+  _G[iconSlider:GetName() .. "Low"]:SetText("50%")
+  _G[iconSlider:GetName() .. "High"]:SetText("200%")
+  local iconSliderText = _G[iconSlider:GetName() .. "Text"]
+  local function RefreshIconSliderText(scale)
+    iconSliderText:SetText(string.format("Icon size: %d%%", math.floor(scale * 100 + 0.5)))
+  end
+  iconSlider:SetValue(MBT.db.iconScale)
+  RefreshIconSliderText(MBT.db.iconScale)
+  iconSlider:SetScript("OnValueChanged", function(self, value)
+    local scale = math.floor(value * 10 + 0.5) / 10
+    MBT.SetIconScale(MBT.db, scale)
+    RefreshIconSliderText(scale)
+    MBT.RefreshDisplay()
+  end)
+
+  RefreshSortRadios()
   RefreshLockButton()
   MBT.RefreshConfigRows()
 end
